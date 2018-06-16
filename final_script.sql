@@ -1,5 +1,5 @@
 drop table if exists seguindo;
-drop table if exists seguidores;
+drop table if exists seguidor;
 drop table if exists likes_midia;
 drop table if exists likes_comentario;
 drop table if exists comentario;
@@ -7,15 +7,16 @@ drop table if exists mensagem;
 drop table if exists conversa;
 drop table if exists caixa_de_mensagem;
 drop table if exists descricao;
+drop table if exists bloqueado;
 drop table if exists midia;
 drop table if exists usuario;
 
 
 create table usuario (
-	usuario_id integer,
-	login varchar(255) unique,
-	senha varchar(255),
-	nome varchar(255),
+	usuario_id integer not null,
+	login varchar(255) unique not null,
+	senha varchar(255) not null,
+	nome varchar(255) not null,
 	descricao text,
 	privado boolean,
 	primary key (usuario_id)
@@ -48,7 +49,7 @@ create table seguindo (
 	primary key (usuario_id, seguindo_id)
 );
 
-create table seguidores (
+create table seguidor (
 	usuario_id integer references usuario(usuario_id),
 	seguidor_id integer,
 	time_stamp timestamp,
@@ -97,3 +98,38 @@ create table bloqueado (
 	bloqueado_id integer,
 	time_stamp timestamp
 );
+
+create or replace function bloquear_usuario() returns trigger as $$
+begin
+	delete from seguidor where 
+		seguidor.usuario_id = new.usuario_id and seguidor.seguidor_id = new.bloqueado_id;
+	delete from seguindo where
+		seguindo.usuario_id = new.bloqueado_id and seguindo.seguindo_id = new.usuario_id;
+	return new;
+end;
+$$ language plpgsql;
+
+create or replace function seguir_usuario() returns trigger as $$
+begin
+	insert into seguidor values(new.seguindo_id, new.usuario_id, current_timestamp);
+	return new;
+end;
+$$ language plpgsql;
+
+create trigger bloqueia after insert on bloqueado 
+	for each row execute procedure bloquear_usuario();
+
+-- created one more for following user
+create trigger seguir after insert on seguindo
+	for each row execute procedure seguir_usuario();
+
+-- some tests
+insert into usuario values (0,'a', 'b', 'a', null, null);
+insert into usuario values (1,'b', 'c', 'b', null, null);
+insert into seguindo values (1, current_timestamp, 0);
+
+insert into bloqueado values (0, 1, current_timestamp);
+
+select * from seguidor;
+select * from seguindo;
+select * from bloqueado;
