@@ -17,8 +17,9 @@ Triggers
 
 4 - Ao PEDIR para seguir um usuário PRIVADO, é adicionado na tabela desse usuário, uma linha USUÁRIOS PENDENTES.
 
-5- Ao aceitar o pedido de SEGUIR, removemos o usuário dessa tabela, e adicionamos na tabela de seguidores.
+5 - Ao aceitar o pedido de SEGUIR, removemos o usuário dessa tabela, e adicionamos na tabela de seguidores.
 
+6 - Ao INSERT/UPDATE uma MENSAGEM, ATUALIZAR o campo qtd_mensagens_nao_lidas da CAIXA DE MENSAGEM da mesma.
 
 OO das entidades:
 
