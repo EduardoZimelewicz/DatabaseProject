@@ -191,23 +191,23 @@ $$ language plpgsql;
 
 create or replace function checa_mensagens_nao_lidas() returns trigger as $$
 declare
-	conversa_var conversa%rowtype;
-	caixa_var caixa_de_mensagem%rowtype;
+	qtd_conv_nao_lidas integer;
 begin
-	select conversa into conversa_var
-		where conversa.conversa_id = new.conversa_id;
-	
-	select caixa_de_mensagem into caixa_var
-		where caixa_de_mensagem.caixa_id = conversa_var.caixa_id;
 
-	if(TG_OP = 'insert') then
-		update conversa_var set possui_nova_mensagem = true;
-		update caixa_de_mensagem set qtd_conversas_nao_lidas = qtd_conversas_nao_lidas + 1;
-	elsif (TG_OP = 'update') THEN
-		update conversa set possui_nova_mensagem = false where
-			conversa.conversa_id = new.conversa_id;	
-		update caixa_de_mensagem set qtd_conversas_nao_lidas = qtd_conversas_nao_lidas - 1;	
+	if(TG_OP = 'INSERT') then
+		update conversa set possui_mensagem_nova = true
+			where conversa.conversa_id = new.conversa_id;
+	elsif (TG_OP = 'UPDATE') THEN
+		update conversa set possui_mensagem_nova = false
+			where conversa.conversa_id = new.conversa_id;	
 	end if;
+
+	select count(*) into qtd_conv_nao_lidas 
+		from conversa, caixa_de_mensagem
+		where conversa.caixa_id = caixa_de_mensagem.caixa_id 
+			and conversa.possui_mensagem_nova = true;
+		
+	update caixa_de_mensagem set qtd_conversas_nao_lidas = qtd_conv_nao_lidas;
 	return new;
 end;
 $$ language plpgsql;
@@ -310,4 +310,22 @@ update conversa set bloqueado = false
 
 select * from conversa;
 select * from mensagem;
+*/
+
+-- test for check quantity da message box
+/*
+insert into usuario values (0,'a', 'b', 'a', null, false);
+insert into usuario values (1,'b', 'c', 'b', null, false);
+insert into usuario values (2,'c', 'c', 'b', null, false);
+
+insert into conversa values (0, 1, 1, false, false);
+insert into mensagem(mensagem_id ,conversa_id ,mensagem ,request ) values (0,0,'hello',false);
+
+insert into conversa values (1, 1, 2, false, false);
+insert into mensagem(mensagem_id ,conversa_id ,mensagem ,request ) values (1,1,'hi',false);
+
+update mensagem set lida = true where mensagem.mensagem_id = 1;
+update mensagem set lida = true where mensagem.mensagem_id = 0;
+
+select * from caixa_de_mensagem;
 */
