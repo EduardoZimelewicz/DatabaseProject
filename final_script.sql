@@ -25,6 +25,7 @@ create table usuario (
 create table caixa_de_mensagem (
 	caixa_id bigserial,
 	usuario_id integer references usuario(usuario_id),
+	qtd_conversas_nao_lidas integer, 
 	primary key(caixa_id)
 );
 
@@ -33,6 +34,7 @@ create table conversa (
 	caixa_id integer references caixa_de_mensagem(caixa_id),
 	receptor_id integer,
 	bloqueado boolean,
+	possui_mensagem_nova boolean, 
 	primary key(conversa_id)
 );
 
@@ -41,6 +43,7 @@ create table mensagem (
 	conversa_id integer references conversa(conversa_id),
 	mensagem text,
 	request boolean,
+	lida boolean DEFAULT false,
 	primary key(mensagem_id)
 );
 
@@ -186,6 +189,30 @@ begin
 end;
 $$ language plpgsql;
 
+create or replace function checa_mensagens_nao_lidas() returns trigger as $$
+declare
+	conversa_var conversa%rowtype;
+	caixa_var caixa_de_mensagem%rowtype;
+begin
+	select conversa into conversa_var
+		where conversa.conversa_id = new.conversa_id;
+	
+	select caixa_de_mensagem into caixa_var
+		where caixa_de_mensagem.caixa_id = conversa_var.caixa_id;
+
+	if(TG_OP = 'insert') then
+		update conversa_var set possui_nova_mensagem = true;
+		update caixa_de_mensagem set qtd_conversas_nao_lidas = qtd_conversas_nao_lidas + 1;
+	elsif (TG_OP = 'update') THEN
+		update conversa set possui_nova_mensagem = false where
+			conversa.conversa_id = new.conversa_id;	
+		update caixa_de_mensagem set qtd_conversas_nao_lidas = qtd_conversas_nao_lidas - 1;	
+	end if;
+	return new;
+end;
+$$ language plpgsql;
+
+
 -- trigger for blocking user
 create trigger bloqueia after insert on bloqueado 
 	for each row execute procedure bloquear_usuario();
@@ -213,6 +240,10 @@ create trigger req_conversa after insert on conversa
 -- trigger for message acceptance
 create trigger accept_message after update of bloqueado on conversa
 	for each row execute procedure accept_message_request();
+	
+-- trigger for updating quantity of new messages on conversations
+create trigger atualiza_caixa_de_mensagens after insert or update on mensagem
+	for each row execute procedure checa_mensagens_nao_lidas();
 
 -- test for blocking user trigger
 /*
