@@ -71,6 +71,7 @@ create table midia(
 	duradoura boolean,
 	time_stamp timestamp,
 	tipo tipo_midia,
+	tamanho integer,
 	primary key (midia_id)
 );
 
@@ -215,16 +216,21 @@ begin
 end;
 $$ language plpgsql;
 
-
 create or replace function checa_tamanho_midia() returns trigger as $$
 declare
 begin
 	if(new.tipo = 'gif') then
-		
+		if(new.tamanho > 5000) then
+			raise exception 'Tamanho de gif não suportado!';
+		end if;
 	elsif(new.tipo = 'imagem') then
-
+		if(new.tamanho > 10000) then
+			raise exception 'Tamanho de imagem não suportado!';
+		end if;
 	elsif(new.tipo = 'video') then
-
+		if(new.tamanho > 50000) then
+			raise exception 'Tamanho de video não suportado!';
+		end if;
 	end if;
 	return new;
 end;
@@ -262,7 +268,8 @@ create trigger accept_message after update of bloqueado on conversa
 -- trigger for updating quantity of new messages on conversations
 create trigger atualiza_caixa_de_mensagens after insert or update on mensagem
 	for each row execute procedure checa_mensagens_nao_lidas();
-	
+
+-- trigger for checking the size of midia
 create trigger verifica_tamanho_da_mida before insert on midia 
 	for each statement execute procedure checa_tamanho_midia();
 
