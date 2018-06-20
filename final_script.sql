@@ -62,12 +62,15 @@ create table seguidor (
 	primary key (usuario_id, seguidor_id)
 );
 
+CREATE TYPE tipo_midia AS ENUM ('imagem', 'gif', 'video');
+
 create table midia(
 	midia_id integer,
 	usuario_id integer references usuario(usuario_id),
 	conteudo varchar(255),
 	duradoura boolean,
 	time_stamp timestamp,
+	tipo tipo_midia,
 	primary key (midia_id)
 );
 
@@ -213,6 +216,21 @@ end;
 $$ language plpgsql;
 
 
+create or replace function checa_tamanho_midia() returns trigger as $$
+declare
+begin
+	if(new.tipo = 'gif') then
+		
+	elsif(new.tipo = 'imagem') then
+
+	elsif(new.tipo = 'video') then
+
+	end if;
+	return new;
+end;
+$$ language plpgsql;
+
+
 -- trigger for blocking user
 create trigger bloqueia after insert on bloqueado 
 	for each row execute procedure bloquear_usuario();
@@ -244,6 +262,9 @@ create trigger accept_message after update of bloqueado on conversa
 -- trigger for updating quantity of new messages on conversations
 create trigger atualiza_caixa_de_mensagens after insert or update on mensagem
 	for each row execute procedure checa_mensagens_nao_lidas();
+	
+create trigger verifica_tamanho_da_mida before insert on midia 
+	for each statement execute procedure checa_tamanho_midia();
 
 -- test for blocking user trigger
 /*
