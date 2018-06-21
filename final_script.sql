@@ -62,6 +62,7 @@ create table seguidor (
 	primary key (usuario_id, seguidor_id)
 );
 
+drop type if exists tipo_midia;
 CREATE TYPE tipo_midia AS ENUM ('imagem', 'gif', 'video');
 
 create table midia(
@@ -181,6 +182,8 @@ begin
 		insert into mensagem values (default, new.conversa_id, '', true);
 		return new;
 	end if;
+	
+	return new;
 end;
 $$ language plpgsql;
 
@@ -236,6 +239,32 @@ begin
 end;
 $$ language plpgsql;
 
+create or replace function checa_ultima_senha() returns trigger as $$
+declare
+	rec_usuario usuario;
+begin
+	select * from usuario into rec_usuario 
+		where usuario.usuario_id = new.usuario_id;
+	if(new.senha = rec_usuario.senha) then
+		raise exception 'Troca de senha inválida, a nova senha deve ser diferente da anterior';
+	end if;
+	return new;
+end;
+$$ language plpgsql;
+
+create or replace function checa_mensagem_request() returns trigger as $$
+declare
+	mensagem_rec record;
+begin
+	select * from mensagem into mensagem_rec
+		where new.conversa_id = mensagem.conversa_id;
+	
+	if(mensagem_rec.request = true) then
+		raise exception 'Usuário bloqueado, Mensagem de requisição já enviada';
+	end if;
+	return new;
+end;
+$$ language plpgsql;
 
 -- trigger for blocking user
 create trigger bloqueia after insert on bloqueado 
@@ -272,6 +301,13 @@ create trigger atualiza_caixa_de_mensagens after insert or update on mensagem
 -- trigger for checking the size of midia
 create trigger verifica_tamanho_da_mida before insert on midia 
 	for each statement execute procedure checa_tamanho_midia();
+
+-- trigger for checking senha
+create trigger checa_senha before update of senha on usuario
+	for each row execute procedure checa_ultima_senha();
+
+create trigger checa_mensagem before insert on mensagem
+	for each row execute procedure checa_mensagem_request();
 
 -- test for blocking user trigger
 /*
@@ -357,3 +393,17 @@ update mensagem set lida = true where mensagem.mensagem_id = 0;
 
 select * from caixa_de_mensagem;
 */
+
+-- test for check password change
+/*
+insert into usuario values (0,'a', 'b', 'a', null, false);
+update usuario set senha = 'b' where usuario.usuario_id = 0;
+*/
+
+/*
+insert into usuario values (0,'a', 'b', 'a', null, true);
+insert into usuario values (1,'b', 'c', 'b', null, false);
+
+insert into conversa values (0, 2, 0, false);
+insert into mensagem(mensagem_id ,conversa_id ,mensagem ,request) values (0,0,'hello',false);
+/*
