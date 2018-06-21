@@ -306,6 +306,7 @@ create trigger verifica_tamanho_da_mida before insert on midia
 create trigger checa_senha before update of senha on usuario
 	for each row execute procedure checa_ultima_senha();
 
+-- trigger for checking mensagem request
 create trigger checa_mensagem before insert on mensagem
 	for each row execute procedure checa_mensagem_request();
 
